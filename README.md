@@ -1,4 +1,4 @@
-# connectUs
+# BuffET36
 
 Vito Alejandro Cordoba 
 Paula Magali Godoy
