@@ -2,5 +2,5 @@
 
 Vito Alejandro Cordoba 
 Paula Magali Godoy
-Geremias Nicdolas Romero Montaner
+Geremias Nicolas Romero Montaner
 Bautista Mateo Vadala Miranda
