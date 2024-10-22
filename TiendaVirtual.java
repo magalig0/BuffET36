@@ -2,13 +2,9 @@ package com.mycompany.mavenproject1;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.sql.*;
-
 
 public class TiendaVirtual extends JFrame {
     private JTable tablaProductos;
@@ -17,8 +13,14 @@ public class TiendaVirtual extends JFrame {
     private ArrayList<Reserva> reservas = new ArrayList<>();
     private JComboBox<String> comboHorarios;
     private JTextArea carrito;
+    private Usuario usuarioActual;
 
     public TiendaVirtual() {
+        iniciarSesion();
+        if (usuarioActual == null) {
+            System.exit(0);
+        }
+
         setTitle("Tienda Virtual");
         setSize(800, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -53,35 +55,159 @@ public class TiendaVirtual extends JFrame {
 
         JButton btnEliminarDelCarrito = new JButton("Eliminar del Carrito");
         btnEliminarDelCarrito.setBounds(20, 340, 200, 30);
-        add(btnEliminarDelCarrito);
-        
         btnEliminarDelCarrito.addActionListener(e -> eliminarProductoDelCarrito());
+        add(btnEliminarDelCarrito);
 
         JButton btnAgregarCarrito = new JButton("Agregar al Carrito");
         btnAgregarCarrito.setBounds(20, 300, 200, 30);
-        add(btnAgregarCarrito);
         btnAgregarCarrito.addActionListener(e -> agregarProductoAlCarrito());
+        add(btnAgregarCarrito);
 
         JButton btnConfirmarReserva = new JButton("Confirmar Reserva");
         btnConfirmarReserva.setBounds(350, 270, 200, 30);
-        add(btnConfirmarReserva);
         btnConfirmarReserva.addActionListener(e -> confirmarReserva());
+        add(btnConfirmarReserva);
 
         cargarProductos();
-        
+        mostrarOpcionesAdmin();
+
         setVisible(true);
     }
 
-    private void cargarProductos() {
-        listaProductos.add(new Producto(1, "Focaccia", 5.00, 10));
-        listaProductos.add(new Producto(2, "Milanguche de sanguinesa", 5.00, 10));
-        listaProductos.add(new Producto(3, "Pizza", 6.00, 8));
-        listaProductos.add(new Producto(4, "Empanada de algo", 2.50, 15));
-        listaProductos.add(new Producto(5, "Pebete", 2.50, 15));
-        listaProductos.add(new Producto(6, "Chegusan", 2.50, 15));
-        
-        for (Producto producto : listaProductos) {
-            modeloProductos.addRow(new Object[]{producto.getNombre(), producto.getPrecio(), producto.getCantidadDisponible()});
+    private void registrarUsuario() {
+        String nombre = JOptionPane.showInputDialog(this, "Ingrese el nombre de usuario:");
+        String contraseña = JOptionPane.showInputDialog(this, "Ingrese la contraseña:");
+
+        if (nombre != null && contraseña != null) {
+            ConexionDB conexionDB = new ConexionDB();
+            if (conexionDB.registrarUsuario(new Usuario(nombre, contraseña, false))) {
+                JOptionPane.showMessageDialog(this, "Usuario registrado con éxito.");
+            } else {
+                JOptionPane.showMessageDialog(this, "Error al registrar el usuario.");
+            }
+            conexionDB.cerrarConexion();
+        }
+    }
+
+    private void iniciarSesion() {
+        while (true) {
+            String[] opciones = {"Iniciar Sesión", "Registrarse"};
+            int seleccion = JOptionPane.showOptionDialog(this, "¿Desea iniciar sesión o registrarse?", "Inicio",
+                    JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, opciones, opciones[0]);
+
+            if (seleccion == 0) { // Opción de iniciar sesión
+                String nombre = JOptionPane.showInputDialog(this, "Ingrese su nombre de usuario:");
+                String contraseña = JOptionPane.showInputDialog(this, "Ingrese su contraseña:");
+
+                ConexionDB conexionDB = new ConexionDB();
+                usuarioActual = conexionDB.verificarUsuario(nombre, contraseña);
+                conexionDB.cerrarConexion();
+
+                if (usuarioActual != null) {
+                    break; // Salir del bucle si el inicio de sesión es exitoso
+                } else {
+                    JOptionPane.showMessageDialog(this, "Usuario o contraseña incorrectos.");
+                }
+            } else if (seleccion == 1) { // Opción de registrarse
+                registrarUsuario();
+            } else {
+                System.exit(0); // Salir si se cierra el diálogo
+            }
+        }
+    }
+
+    private void mostrarOpcionesAdmin() {
+        if (usuarioActual != null && usuarioActual.esAdmin()) {
+            JButton btnModificarProducto = new JButton("Modificar Producto");
+            btnModificarProducto.setBounds(20, 440, 200, 30);
+            btnModificarProducto.addActionListener(e -> modificarProducto());
+            add(btnModificarProducto);
+
+            JButton btnAgregarProducto = new JButton("Agregar Producto");
+            btnAgregarProducto.setBounds(20, 480, 200, 30);
+            btnAgregarProducto.addActionListener(e -> agregarProducto());
+            add(btnAgregarProducto);
+
+            JButton btnBorrarProducto = new JButton("Borrar Producto");
+            btnBorrarProducto.setBounds(20, 520, 200, 30);
+            btnBorrarProducto.addActionListener(e -> borrarProducto());
+            add(btnBorrarProducto);
+        }
+    }
+
+    private void modificarProducto() {
+        String[] opciones = listaProductos.stream().map(Producto::getNombre).toArray(String[]::new);
+        String productoSeleccionado = (String) JOptionPane.showInputDialog(this, "Seleccione un producto:", "Modificar Producto", JOptionPane.QUESTION_MESSAGE, null, opciones, opciones[0]);
+
+        if (productoSeleccionado != null) {
+            Producto producto = listaProductos.stream().filter(p -> p.getNombre().equals(productoSeleccionado)).findFirst().orElse(null);
+
+            if (producto != null) {
+                String nuevoNombre = JOptionPane.showInputDialog(this, "Nuevo nombre:", producto.getNombre());
+                String nuevoPrecioStr = JOptionPane.showInputDialog(this, "Nuevo precio:", producto.getPrecio());
+                String nuevaCantidadStr = JOptionPane.showInputDialog(this, "Nueva cantidad:", producto.getCantidadDisponible());
+
+                try {
+                    double nuevoPrecio = Double.parseDouble(nuevoPrecioStr);
+                    int nuevaCantidad = Integer.parseInt(nuevaCantidadStr);
+
+                    // Actualizar producto
+                    producto.setNombre(nuevoNombre);
+                    producto.setPrecio(nuevoPrecio);
+                    producto.setCantidadDisponible(nuevaCantidad);
+
+                    // Actualizar en la base de datos
+                    ConexionDB conexionDB = new ConexionDB();
+                    conexionDB.actualizarProducto(producto);
+                    conexionDB.cerrarConexion();
+
+                    JOptionPane.showMessageDialog(this, "Producto modificado exitosamente.");
+                    cargarProductos(); // Actualizar la lista de productos en la interfaz
+                } catch (NumberFormatException e) {
+                    JOptionPane.showMessageDialog(this, "Error en los valores ingresados.");
+                }
+            }
+        }
+    }
+
+    private void borrarProducto() {
+        String[] opciones = listaProductos.stream().map(Producto::getNombre).toArray(String[]::new);
+        String productoSeleccionado = (String) JOptionPane.showInputDialog(this, "Seleccione un producto a eliminar:", "Borrar Producto", JOptionPane.QUESTION_MESSAGE, null, opciones, opciones[0]);
+
+        if (productoSeleccionado != null) {
+            Producto productoAEliminar = listaProductos.stream().filter(p -> p.getNombre().equals(productoSeleccionado)).findFirst().orElse(null);
+
+            if (productoAEliminar != null) {
+                // Eliminar de la base de datos
+                ConexionDB conexionDB = new ConexionDB();
+                conexionDB.borrarProducto(productoAEliminar.getId());
+                conexionDB.cerrarConexion();
+
+                JOptionPane.showMessageDialog(this, "Producto eliminado exitosamente.");
+                cargarProductos(); // Actualizar la lista de productos en la interfaz
+            }
+        }
+    }
+
+    private void agregarProducto() {
+        String nombre = JOptionPane.showInputDialog(this, "Ingrese el nombre del producto:");
+        String precioStr = JOptionPane.showInputDialog(this, "Ingrese el precio:");
+        String cantidadStr = JOptionPane.showInputDialog(this, "Ingrese la cantidad:");
+
+        try {
+            double precio = Double.parseDouble(precioStr);
+            int cantidad = Integer.parseInt(cantidadStr);
+            Producto nuevoProducto = new Producto(listaProductos.size() + 1, nombre, precio, cantidad);
+
+            // Insertar en la base de datos
+            ConexionDB conexionDB = new ConexionDB();
+            conexionDB.insertarProducto(nuevoProducto);
+            conexionDB.cerrarConexion();
+
+            JOptionPane.showMessageDialog(this, "Producto agregado exitosamente.");
+            cargarProductos(); // Actualizar la lista de productos en la interfaz
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Error en los valores ingresados.");
         }
     }
 
@@ -94,29 +220,29 @@ public class TiendaVirtual extends JFrame {
         return horarios;
     }
 
-private void agregarProductoAlCarrito() {
-    int filaSeleccionada = tablaProductos.getSelectedRow();
-    if (filaSeleccionada >= 0) {
-        Producto productoSeleccionado = listaProductos.get(filaSeleccionada);
-        
-        // Obtener la cantidad del usuario
-        String cantidadStr = JOptionPane.showInputDialog(this, "Ingrese la cantidad:");
-        int cantidad = Integer.parseInt(cantidadStr);
-        
-        // Verificar disponibilidad
-        if (cantidad > productoSeleccionado.getCantidadDisponible()) {
-            JOptionPane.showMessageDialog(this, "No hay suficiente stock disponible.");
-            return;
+    private void agregarProductoAlCarrito() {
+        int filaSeleccionada = tablaProductos.getSelectedRow();
+        if (filaSeleccionada >= 0) {
+            Producto productoSeleccionado = listaProductos.get(filaSeleccionada);
+            String cantidadStr = JOptionPane.showInputDialog(this, "Ingrese la cantidad:");
+            if (cantidadStr == null || cantidadStr.isEmpty()) return; // Si el usuario cancela
+
+            try {
+                int cantidad = Integer.parseInt(cantidadStr);
+                if (cantidad > productoSeleccionado.getCantidadDisponible()) {
+                    JOptionPane.showMessageDialog(this, "No hay suficiente stock disponible.");
+                    return;
+                }
+
+                String horarioStr = (String) comboHorarios.getSelectedItem();
+                LocalDateTime horario = LocalDateTime.parse(horarioStr, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                carrito.append("Producto: " + productoSeleccionado.getNombre() + " - Cantidad: " + cantidad + " - Horario: " + horario + "\n");
+                reservas.add(new Reserva(productoSeleccionado, cantidad, horario));
+            } catch (NumberFormatException e) {
+                JOptionPane.showMessageDialog(this, "Por favor ingrese un número válido.");
+            }
         }
-
-        // Obtener el horario seleccionado y convertirlo a LocalDateTime
-        String horarioStr = (String) comboHorarios.getSelectedItem();
-        LocalDateTime horario = LocalDateTime.parse(horarioStr, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-
-        carrito.append("Producto: " + productoSeleccionado.getNombre() + " - Cantidad: " + cantidad + " - Horario: " + horario + "\n");
-        reservas.add(new Reserva(productoSeleccionado, cantidad, horario)); // Usar el horario como LocalDateTime
     }
-}
 
     private void eliminarProductoDelCarrito() {
         String[] lineas = carrito.getText().split("\n");
@@ -136,54 +262,42 @@ private void agregarProductoAlCarrito() {
     }
 
     private void confirmarReserva() {
-    if (reservas.isEmpty()) {
-        JOptionPane.showMessageDialog(this, "El carrito está vacío.");
-        return;
-    }
-
-    ConexionDB conexionDB = new ConexionDB();
-    if (conexionDB.getConexion() == null) {
-        JOptionPane.showMessageDialog(this, "No se pudo establecer la conexión a la base de datos.");
-        return;
-    }
-
-    for (Reserva reserva : reservas) {
-        if (productoExiste(reserva.getProducto().getId(), conexionDB)) {
-            // Actualizar la disponibilidad del producto
-            reserva.getProducto().reducirCantidad(reserva.getCantidad());
-            conexionDB.insertarReserva(reserva);
-        } else {
-            JOptionPane.showMessageDialog(this, "El producto con ID " + reserva.getProducto().getId() + " no existe.");
+        if (reservas.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "El carrito está vacío.");
             return;
         }
-    }
 
-    JOptionPane.showMessageDialog(this, "Reserva confirmada para " + reservas.size() + " productos.");
-    conexionDB.cerrarConexion(); // Cerrar la conexión
-    limpiarCarritoYReservas();
-}
-
-    private boolean productoExiste(int productoId, ConexionDB conexionDB) {
-     String query = "SELECT COUNT(*) FROM productos WHERE id = ?";
-        try (PreparedStatement statement = conexionDB.getConexion().prepareStatement(query)) {
-         statement.setInt(1, productoId);
-          ResultSet resultSet = statement.executeQuery();
-        if (resultSet.next()) {
-            return resultSet.getInt(1) > 0; // Retorna true si existe al menos un registro
+        ConexionDB conexionDB = new ConexionDB();
+        for (Reserva reserva : reservas) {
+            reserva.getProducto().reducirCantidad(reserva.getCantidad());
+            conexionDB.insertarReserva(reserva);
         }
-    } catch (SQLException e) {
-        System.err.println("Error al verificar el producto: " + e.getMessage());
-        e.printStackTrace();
+
+        JOptionPane.showMessageDialog(this, "Reserva confirmada para " + reservas.size() + " productos.");
+        conexionDB.cerrarConexion();
+        limpiarCarritoYReservas();
     }
-    return false; // Por defecto, retorna false
-}
 
     private void limpiarCarritoYReservas() {
         carrito.setText("");
         reservas.clear();
     }
 
-    // Método main para ejecutar la aplicación
+    private void cargarProductos() {
+        modeloProductos.setRowCount(0); // Limpiar la tabla antes de cargar
+        listaProductos.clear(); // Limpiar la lista antes de cargar
+
+        // Conexión a la base de datos
+        ConexionDB conexionDB = new ConexionDB();
+        listaProductos = conexionDB.cargarProductosDesdeDB(); // Método que debes implementar en ConexionDB
+        conexionDB.cerrarConexion();
+
+        // Agregar productos a la tabla
+        for (Producto producto : listaProductos) {
+            modeloProductos.addRow(new Object[]{producto.getNombre(), producto.getPrecio(), producto.getCantidadDisponible()});
+        }
+    }
+
     public static void main(String[] args) {
         new TiendaVirtual();
     }

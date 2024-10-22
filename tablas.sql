@@ -13,3 +13,10 @@ CREATE TABLE reservas (
     horario DATETIME NOT NULL,
     FOREIGN KEY (producto_id) REFERENCES productos(id)
 );
+
+CREATE TABLE usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL UNIQUE,
+    contraseña VARCHAR(100) NOT NULL,
+    es_admin BOOLEAN NOT NULL DEFAULT FALSE
+);
