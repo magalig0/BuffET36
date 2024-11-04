@@ -220,29 +220,34 @@ public class TiendaVirtual extends JFrame {
         return horarios;
     }
 
-    private void agregarProductoAlCarrito() {
-        int filaSeleccionada = tablaProductos.getSelectedRow();
-        if (filaSeleccionada >= 0) {
-            Producto productoSeleccionado = listaProductos.get(filaSeleccionada);
-            String cantidadStr = JOptionPane.showInputDialog(this, "Ingrese la cantidad:");
-            if (cantidadStr == null || cantidadStr.isEmpty()) return; // Si el usuario cancela
+private void agregarProductoAlCarrito() {
+    int filaSeleccionada = tablaProductos.getSelectedRow();
+    if (filaSeleccionada >= 0) {
+        Producto productoSeleccionado = listaProductos.get(filaSeleccionada);
+        String cantidadStr = JOptionPane.showInputDialog(this, "Ingrese la cantidad:");
 
-            try {
-                int cantidad = Integer.parseInt(cantidadStr);
-                if (cantidad > productoSeleccionado.getCantidadDisponible()) {
-                    JOptionPane.showMessageDialog(this, "No hay suficiente stock disponible.");
-                    return;
-                }
+        if (cantidadStr == null || cantidadStr.isEmpty()) return; // Si el usuario cancela
 
-                String horarioStr = (String) comboHorarios.getSelectedItem();
-                LocalDateTime horario = LocalDateTime.parse(horarioStr, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-                carrito.append("Producto: " + productoSeleccionado.getNombre() + " - Cantidad: " + cantidad + " - Horario: " + horario + "\n");
-                reservas.add(new Reserva(productoSeleccionado, cantidad, horario));
-            } catch (NumberFormatException e) {
-                JOptionPane.showMessageDialog(this, "Por favor ingrese un número válido.");
+        try {
+            int cantidad = Integer.parseInt(cantidadStr);
+            if (cantidad <= 0) { // Verifica que la cantidad sea positiva
+                JOptionPane.showMessageDialog(this, "La cantidad debe ser un número positivo.");
+                return;
             }
+            if (cantidad > productoSeleccionado.getCantidadDisponible()) {
+                JOptionPane.showMessageDialog(this, "No hay suficiente stock disponible.");
+                return;
+            }
+
+            String horarioStr = (String) comboHorarios.getSelectedItem();
+            LocalDateTime horario = LocalDateTime.parse(horarioStr, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            carrito.append("Producto: " + productoSeleccionado.getNombre() + " - Cantidad: " + cantidad + " - Horario: " + horario + "\n");
+            reservas.add(new Reserva(productoSeleccionado, cantidad, horario));
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Por favor ingrese un número válido.");
         }
     }
+}
 
     private void eliminarProductoDelCarrito() {
         String[] lineas = carrito.getText().split("\n");
