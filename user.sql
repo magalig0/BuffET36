@@ -1,2 +1,5 @@
 INSERT INTO usuarios (nombre, contraseña, es_admin)
-VALUES ('nombre_admin', 'contraseña_segura', TRUE);
+VALUES ('admin', 'galleta', TRUE);
+
+INSERT INTO usuarios (nombre, contraseña, es_admin)
+VALUES ('vito', 'mar', FALSE);
